@@ -1,0 +1,312 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "SLEEP HUB",
+   Icon = 121030902371363, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   LoadingTitle = "SLEEP HUB",
+   LoadingSubtitle = "by SLEEP HUB",
+   ShowText = "Rayfield", -- for mobile users to unhide rayfield, change if you'd like
+   Theme = "Dark Blue", -- Check https://docs.sirius.menu/rayfield/configuration/themes
+
+   ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
+
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil, -- Create a custom folder for your hub/game
+      FileName = "SLEEP HUB Hub"
+   },
+
+   Discord = {
+      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+   },
+
+   KeySystem = true, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided", -- Use this to tell the user how to get a key
+      FileName = "SLEEP", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"SLEEP"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+   }
+})
+
+local Tab = Window:CreateTab("หน้าหลัก", 134685084741535)
+
+
+
+-- ตัวเลือก (แก้ชื่อ/เพิ่มตัวเลือกได้ที่นี่)
+local zoneOptions = {"โซน 1", "โซน 2", "โซน 3", "โซน 4", "โซน 5", "โซน 6", "โซน 7", "โซน 8", "โซน 9", "โซน 10", "โซน 11", "โซน 12", "โซน 13", "โซน 14", "โซน 15", "โซน 16"}
+local machineOptions = {"อันที่ 1", "อันที่ 2", "อันที่ 3"}
+
+-- ค่าที่เลือกเริ่มต้น (index)
+local selectedZoneIndex = 1
+local selectedMachineIndex = 1
+
+-- ตัวแปรควบคุมลูป
+local running = false
+local workerThread = nil
+
+-- สร้าง Dropdown เลือกโซน
+local ZoneDropdown = Tab:CreateDropdown({
+	Name = "เลือกโซนที่จะฟาร์ม",
+	Options = zoneOptions,
+	CurrentOption = { zoneOptions[selectedZoneIndex] },
+	MultipleOptions = false,
+	Flag = "DropdownZone",
+	Callback = function(option)
+		-- option อาจเป็น string หรือ table ขึ้นกับ lib ที่ใช้
+		local chosen = option
+		if type(option) == "table" then chosen = option[1] end
+		local idx = table.find(zoneOptions, chosen) or 1
+		selectedZoneIndex = idx
+		-- (ถ้าต้องการแสดงข้อความ) print("เลือกโซน:", chosen, "index:", idx)
+	end,
+})
+
+-- สร้าง Dropdown เลือกเครื่อง
+local MachineDropdown = Tab:CreateDropdown({
+	Name = "เลือกเครื่องออกกำลัง",
+	Options = machineOptions,
+	CurrentOption = { machineOptions[selectedMachineIndex] },
+	MultipleOptions = false,
+	Flag = "DropdownMachine",
+	Callback = function(option)
+		local chosen = option
+		if type(option) == "table" then chosen = option[1] end
+		local idx = table.find(machineOptions, chosen) or 1
+		selectedMachineIndex = idx
+		-- print("เลือกเครื่อง:", chosen, "index:", idx)
+	end,
+})
+
+-- Toggle ที่จะเริ่ม/หยุดการฟาร์มโดยใช้ค่าที่เลือกจาก dropdowns
+local ToggleFarm = Tab:CreateToggle({
+	Name = "ออโต้ฟาร์มพลัง",
+	CurrentValue = false,
+	Flag = "ToggleFarm",
+	Callback = function(Value)
+		-- ป้องกัน spawn ซ้อนได้
+		if Value == running then return end
+		running = Value
+
+		-- ถ้าเปิด ให้ spawn worker
+		if running then
+			workerThread = task.spawn(function()
+				local event = game:GetService("ReplicatedStorage")
+					:WaitForChild("Events")
+					:WaitForChild("RequestServerAction")
+
+				while running do
+					-- สร้าง args โดยเอา machine เป็นตัวแรก, zone เป็นตัวที่สอง
+					local args = {
+						"Gameplay",
+						"Train",
+						{ selectedMachineIndex, selectedZoneIndex }
+					}
+					-- ยิงไปที่ server
+					event:FireServer(unpack(args))
+
+					-- หน่วงเวลา (ปรับได้ตามต้องการ)
+					task.wait(0.1)
+				end
+			end)
+		else
+			-- ถ้าปิด ให้หยุดลูป (worker จะออกจาก while เมื่อ running = false)
+			workerThread = nil
+		end
+	end,
+})
+
+local Tab = Window:CreateTab("ฟาร์มมงกฏ", 17791680358)
+
+-- ตัวแปรควบคุมลูป
+local running = false
+local selectedOption = 1 -- ค่าเริ่มต้น (Win 1)
+
+-- สร้าง Dropdown เลือก Win
+local WinDropdown = Tab:CreateDropdown({
+	Name = "เลือก Win ที่จะฟาร์ม",
+	Options = {
+        "Win 1",
+         "Win 2",
+          "Win 3",
+           "Win 4",
+            "Win 5",
+             "Win 6",
+			  "Win 7",
+               "Win 8",
+			    "Win 9",
+			     "Win 10",
+				  "Win 11",
+				   "Win 12",
+				    "Win 13",
+				     "Win 14",
+					  "Win 15",
+                       "Win 16"},
+
+    CurrentOption = {"Win 1"},
+	MultipleOptions = false,
+	Flag = "DropdownWin",
+	Callback = function(option)
+		-- อ่านค่าที่เลือก
+		local chosen = option
+		if type(option) == "table" then chosen = option[1] end
+		
+		if chosen == "Win 1" then
+			selectedOption = 1
+		elseif chosen == "Win 2" then
+			selectedOption = 2
+        elseif chosen == "Win 3" then
+			selectedOption = 3
+        elseif chosen == "Win 4" then
+			selectedOption = 4
+        elseif chosen == "Win 5" then
+			selectedOption = 5
+        elseif chosen == "Win 6" then
+			selectedOption = 6
+        elseif chosen == "Win 7" then
+			selectedOption = 7
+        elseif chosen == "Win 8" then
+			selectedOption = 8
+		elseif chosen == "Win 8" then
+			selectedOption = 9
+		elseif chosen == "Win 10" then
+			selectedOption = 10
+		elseif chosen == "Win 11" then
+			selectedOption = 11
+		elseif chosen == "Win 12" then
+			selectedOption = 12
+		elseif chosen == "Win 13" then
+			selectedOption = 13
+		elseif chosen == "Win 14" then
+			selectedOption = 14
+		elseif chosen == "Win 15" then
+			selectedOption = 15
+		elseif chosen == "Win 16" then
+			selectedOption = 16
+		end
+		-- print("เลือก Win:", chosen, "index:", selectedOption)
+	end,
+})
+
+-- Toggle สำหรับเริ่ม/หยุดฟาร์ม
+local ToggleFarm = Tab:CreateToggle({
+	Name = "ออโต้ฟาร์มมงกฏ",
+	CurrentValue = false,
+	Flag = "ToggleFarm",
+	Callback = function(Value)
+		-- ป้องกัน spawn ซ้ำ
+		if Value == running then return end
+		running = Value
+
+		if running then
+			task.spawn(function()
+				local event = game:GetService("ReplicatedStorage")
+					:WaitForChild("Events")
+					:WaitForChild("InvokeServerAction")
+
+				-- กำหนดชุด args
+				local allArgs = {
+					{"Gameplay","Win",1},
+					{"Gameplay","Win",2},
+                    {"Gameplay","Win",3},
+                    {"Gameplay","Win",4},
+                    {"Gameplay","Win",5},
+                    {"Gameplay","Win",6},
+                    {"Gameplay","Win",7},
+                    {"Gameplay","Win",8},
+					{"Gameplay","Win",9},
+					{"Gameplay","Win",10},
+					{"Gameplay","Win",11},
+					{"Gameplay","Win",12},
+					{"Gameplay","Win",13},
+					{"Gameplay","Win",14},
+					{"Gameplay","Win",15},
+					{"Gameplay","Win",16}
+				}
+
+				while running do
+					local args = allArgs[selectedOption]
+					if args then
+						event:InvokeServer(unpack(args))
+					end
+					task.wait(0.1)
+				end
+			end)
+		end
+	end,
+})
+
+local Tab = Window:CreateTab("ฟาร์มกุญแจ", 130939664073550)
+
+local running = false
+local selectedWin = "Bronze" -- ค่าเริ่มต้น
+
+-- Dropdown เลือก Key ที่จะฟาร์ม
+local WinDropdown = Tab:CreateDropdown({
+	Name = "เลือก Key ที่จะฟาร์ม",
+	Options = {"Bronze", "Silver", "Gold", "Diamond", "Platinum", "Radioactive"},
+	CurrentOption = {"Bronze"},
+	MultipleOptions = false,
+	Flag = "DropdownWin",
+	Callback = function(option)
+		-- เก็บค่าที่เลือกไว้ในตัวแปร
+		if type(option) == "table" then
+			selectedWin = option[1]
+		else
+			selectedWin = option
+		end
+		-- print("เลือก:", selectedWin)
+	end,
+})
+
+-- Toggle สำหรับเปิด/ปิดออโต้ฟาร์ม
+local ToggleFarm = Tab:CreateToggle({
+	Name = "ออโต้ฟาร์มกุญ",
+	CurrentValue = false,
+	Flag = "ToggleFarm",
+	Callback = function(Value)
+		running = Value
+
+		if running then
+			task.spawn(function()
+				local event = game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("RequestServerAction")
+
+				while running do
+					local args
+
+					-- ยิงคำสั่งตาม Key ที่เลือก
+					if selectedWin == "Bronze" then
+						args = {"Gameplay", "DunkBattleWin", "Punk Kid"}
+					elseif selectedWin == "Silver" then
+						args = {"Gameplay", "DunkBattleWin", "Snow Gentleman"}
+					elseif selectedWin == "Gold" then
+						args = {"Gameplay", "DunkBattleWin", "Aquaman"}
+					elseif selectedWin == "Diamond" then
+						args = {"Gameplay", "DunkBattleWin", "Wizard"}
+					elseif selectedWin == "Platinum" then
+						args = {"Gameplay", "DunkBattleWin", "Korblox Feathspeaker"}
+					elseif selectedWin == "Radioactive" then
+						args = {"Gameplay", "DunkBattleWin", "The Overseer"}
+					end
+
+					if args then
+						event:FireServer(unpack(args))
+					end
+
+					task.wait(0.1) -- หน่วงเวลา 0.1 วิ
+				end
+			end)
+		end
+	end,
+})
+
+
+Rayfield:LoadConfiguration()
